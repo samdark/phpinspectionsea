@@ -2,6 +2,9 @@ package com.kalessil.phpStorm.phpInspectionsEA.utils;
 
 import java.util.HashSet;
 
+/**
+ * @deprecated and not to be used
+ */
 public class TypesSemanticsUtil {
 
     /** check if nullable object interfaces */

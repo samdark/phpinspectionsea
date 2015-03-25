@@ -4,6 +4,9 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 
+/**
+ * @deprecated and not to be used
+ */
 public class Types {
     final static public String strArray    = "array";
     final static public String strString   = "string";

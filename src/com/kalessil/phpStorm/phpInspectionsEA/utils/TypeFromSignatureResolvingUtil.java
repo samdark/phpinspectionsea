@@ -9,6 +9,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 
+/**
+ * @deprecated and not to be used
+ */
 public class TypeFromSignatureResolvingUtil {
 
     static public void resolveSignature (String strSignatureToResolve, @Nullable Function objScope, PhpIndex objIndex, HashSet<String> extractedTypesSet) {

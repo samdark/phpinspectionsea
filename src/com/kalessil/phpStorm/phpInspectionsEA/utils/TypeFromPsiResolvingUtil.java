@@ -12,6 +12,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.HashSet;
 
+/**
+ * @deprecated and not to be used
+ */
 public class TypeFromPsiResolvingUtil {
 
     /** adds type, handling | and #, invoking signatures resolving */

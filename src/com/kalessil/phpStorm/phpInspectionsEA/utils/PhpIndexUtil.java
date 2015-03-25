@@ -5,6 +5,9 @@ import com.jetbrains.php.lang.psi.elements.PhpClass;
 
 import java.util.LinkedList;
 
+/**
+ * @deprecated and not to be used
+ */
 public class PhpIndexUtil {
 
     static public LinkedList<PhpClass> getObjectInterfaces(String strName, PhpIndex objIndex) {
