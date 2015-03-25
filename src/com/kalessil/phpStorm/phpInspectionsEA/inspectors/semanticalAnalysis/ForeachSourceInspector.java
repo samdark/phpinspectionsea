@@ -1,12 +1,17 @@
 package com.kalessil.phpStorm.phpInspectionsEA.inspectors.semanticalAnalysis;
 
+import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.ProblemsHolder;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
+import com.jetbrains.php.PhpBundle;
 import com.jetbrains.php.PhpIndex;
 import com.jetbrains.php.lang.psi.elements.*;
+import com.jetbrains.php.lang.psi.resolve.types.PhpType;
+import com.jetbrains.php.refactoring.PhpRefactoringUtil;
 import com.kalessil.phpStorm.phpInspectionsEA.openApi.BasePhpElementVisitor;
 import com.kalessil.phpStorm.phpInspectionsEA.openApi.BasePhpInspection;
 import com.kalessil.phpStorm.phpInspectionsEA.utils.ExpressionSemanticUtil;
@@ -31,8 +36,17 @@ public class ForeachSourceInspector extends BasePhpInspection {
     private static final String strProblemResolvingMixed = "Could not resolve this source type, specify possible types instead of mixed";
     private static final String strProblemResolvingArrayItemType = "Could not resolve this source type, array item type annotation needed";
     private static final String strProblemResolvingParameterType = "Could not resolve this source type, parameter type annotation needed";
-    private static final String strProblemResolvingClassSlot = "Could not resolve this source type, expression  type annotation needed";
+    private static final String strProblemResolvingClassSlot = "Could not resolve this source type, expression type annotation needed";
     private static final String strProblemDescription = "This source type can not be iterated: given ";
+
+    private static final PhpType unsupportedTypesSet = new PhpType();
+    static {
+        unsupportedTypesSet.add(PhpType.STRING);
+        unsupportedTypesSet.add(PhpType.FLOAT);
+        unsupportedTypesSet.add(PhpType.INT);
+        unsupportedTypesSet.add(PhpType.BOOLEAN);
+        unsupportedTypesSet.add(PhpType.NULL);
+    }
 
     @NotNull
     public String getShortName() {
@@ -43,10 +57,34 @@ public class ForeachSourceInspector extends BasePhpInspection {
     public PsiElementVisitor buildVisitor(@NotNull final ProblemsHolder holder, final boolean isOnTheFly) {
         return new BasePhpElementVisitor() {
             public void visitPhpForeach(ForeachStatement foreach) {
-                this.inspectSource(foreach.getArray());
+                PsiElement objSource = foreach.getArgument();
+                if (objSource instanceof PhpTypedElement) {
+                    PhpType argumentType = PhpRefactoringUtil.getCompletedType((PhpTypedElement) objSource, objSource.getProject());
+
+                    /* array, valid expression */
+                    if (PhpType.ARRAY == argumentType) {
+                        return;
+                    }
+
+                    /* mixed, needs to be specified */
+                    if (PhpType.MIXED == argumentType) {
+                        holder.registerProblem(objSource, strProblemResolvingMixed, ProblemHighlightType.WEAK_WARNING);
+                        return;
+                    }
+
+                    /* un-supported types */
+                    if (PhpType.isSubType(argumentType, unsupportedTypesSet)) {
+                        String strMessage = strProblemDescription + argumentType.toString();
+                        holder.registerProblem(objSource, strMessage, ProblemHighlightType.GENERIC_ERROR_OR_WARNING);
+                        return;
+                    }
+
+                    /* empty/poly-variant cases */
+                    this.inspectSource(foreach.getArray(), argumentType);
+                }
             }
 
-            private void inspectSource(PsiElement objSource) {
+            private void inspectSource(PsiElement objSource, PhpType typeFromProjectIndex) {
                 objSource = ExpressionSemanticUtil.getExpressionTroughParenthesis(objSource);
                 if (null == objSource) {
                     return;
@@ -62,30 +100,8 @@ public class ForeachSourceInspector extends BasePhpInspection {
 
                 PhpIndex objIndex = PhpIndex.getInstance(holder.getProject());
 
-                boolean isExpressionInspected = false;
                 LinkedList<String> listSignatureTypes = new LinkedList<String>();
-                //noinspection ConstantConditions
-                if (!isExpressionInspected && objSource instanceof FieldReference) {
-                    this.lookupType(((FieldReference) objSource).getSignature(), objSource, listSignatureTypes, objIndex);
-                    isExpressionInspected = true;
-                }
-                if (!isExpressionInspected && objSource instanceof MethodReference) {
-                    this.lookupType(((MethodReference) objSource).getSignature(), objSource, listSignatureTypes, objIndex);
-                    isExpressionInspected = true;
-                }
-                if (!isExpressionInspected && objSource instanceof Variable) {
-                    this.lookupType(((Variable) objSource).getSignature(), objSource, listSignatureTypes, objIndex);
-                    isExpressionInspected = true;
-                }
-                if (!isExpressionInspected && objSource instanceof FunctionReference) {
-                    this.lookupType(((FunctionReference) objSource).getSignature(), objSource, listSignatureTypes, objIndex);
-                    isExpressionInspected = true;
-                }
-                if (!isExpressionInspected) {
-                    /** something what is not supported */
-                    return;
-                }
-
+                this.lookupType(typeFromProjectIndex.toString(), objSource, listSignatureTypes, objIndex);
                 if (listSignatureTypes.size() == 0) {
                     /** resolving failed at all */
                     holder.registerProblem(objSource, strProblemResolvingIsEmpty, ProblemHighlightType.GENERIC_ERROR_OR_WARNING);
