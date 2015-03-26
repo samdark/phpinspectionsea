@@ -79,7 +79,7 @@ public class ForeachSourceInspector extends BasePhpInspection {
                         return;
                     }
 
-                    /* empty/poly-variant cases */
+                    /* empty/poly-variant cases, work with argumentType.getTypes */
                     this.inspectSource(foreach.getArray(), argumentType);
                 }
             }
