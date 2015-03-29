@@ -2,13 +2,18 @@ package com.kalessil.phpStorm.phpInspectionsEA.inspectors.apiUsage;
 
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.ProblemsHolder;
+import com.intellij.ide.PsiActionSupportFactory;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiRecursiveElementWalkingVisitor;
+import com.intellij.psi.impl.search.PsiSearchHelperImpl;
+import com.intellij.psi.search.PsiSearchHelper;
+import com.intellij.psi.search.PsiSearchRequest;
+import com.intellij.psi.search.PsiSearchScopeUtil;
+import com.intellij.psi.util.PsiTreeUtil;
 import com.jetbrains.php.PhpIndex;
-import com.jetbrains.php.lang.psi.elements.ArrayAccessExpression;
-import com.jetbrains.php.lang.psi.elements.Function;
-import com.jetbrains.php.lang.psi.elements.PhpEmpty;
-import com.jetbrains.php.lang.psi.elements.PhpExpression;
+import com.jetbrains.php.lang.psi.elements.*;
 import com.kalessil.phpStorm.phpInspectionsEA.openApi.BasePhpElementVisitor;
 import com.kalessil.phpStorm.phpInspectionsEA.openApi.BasePhpInspection;
 import com.kalessil.phpStorm.phpInspectionsEA.utils.ExpressionSemanticUtil;
@@ -33,6 +38,10 @@ public class IsEmptyFunctionUsageInspector extends BasePhpInspection {
     public PsiElementVisitor buildVisitor(@NotNull final ProblemsHolder holder, boolean isOnTheFly) {
         return new BasePhpElementVisitor() {
             public void visitPhpEmpty(PhpEmpty emptyExpression) {
+                /* find .php_cs and extract configuration from there */
+                PsiFile csFixerFile = holder.getFile().getContainingDirectory().findFile(".php_cs");
+                PsiTreeUtil.findChildrenOfType(csFixerFile.getContext(), MethodReference.class);
+
                 PhpExpression[] arrValues = emptyExpression.getVariables();
                 if (arrValues.length == 1) {
                     PsiElement objParameterToInspect = ExpressionSemanticUtil.getExpressionTroughParenthesis(arrValues[0]);
