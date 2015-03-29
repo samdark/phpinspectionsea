@@ -1,6 +1,18 @@
 package com.kalessil.phpStorm.phpInspectionsEA;
 
 import com.intellij.codeInspection.InspectionToolProvider;
+import com.intellij.openapi.fileTypes.FileTypeManager;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.project.ProjectManager;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiManager;
+import com.intellij.psi.util.PsiTreeUtil;
+import com.jetbrains.php.lang.PhpFileType;
+import com.jetbrains.php.lang.psi.elements.MethodReference;
+import com.kalessil.phpStorm.phpInspectionsEA.csFixer.ConfigurationRepository;
+
+import java.util.HashMap;
 
 /*
 ===Release notes===
@@ -69,6 +81,41 @@ PHP 5 migration: reflection API usage (ReflectionClass):
 public class PhpInspectionsEAProvider implements InspectionToolProvider {
     @Override
     public Class[] getInspectionClasses() {
+        ConfigurationRepository fixersConfiguration = ConfigurationRepository.getInstance();
+
+        Project[] openProjects = ProjectManager.getInstance().getOpenProjects();
+        fixersConfiguration.actualize(openProjects);
+
+        for (Project currentProject : openProjects) {
+            boolean hasPhpCsConfig = false;
+
+            /* find .php_cs in projects root */
+            VirtualFile csFixerVirtualFile = currentProject.getBaseDir().findChild(".php_cs");
+            if (null != csFixerVirtualFile) {
+                /* ensure file is recognized as PHP code */
+                if (PhpFileType.INSTANCE != csFixerVirtualFile.getFileType()) {
+                    FileTypeManager.getInstance().associateExtension(PhpFileType.INSTANCE, "php_cs");
+                }
+
+                /* Get PSI file from Virtual one */
+                PsiFile csFixerFile = PsiManager.getInstance(currentProject).findFile(csFixerVirtualFile);
+                if (null != csFixerFile) {
+                    PsiTreeUtil.findChildrenOfType(csFixerFile, MethodReference.class);
+                    /* TODO: iterate found references and register in repository */
+                    hasPhpCsConfig = true;
+                }
+
+                // listen for changes
+                //PsiManager.getInstance(currentProject).addPsiTreeChangeListener();
+            }
+
+            /* store empty container if no setting extracted for whatever reason */
+            if (!hasPhpCsConfig) {
+                fixersConfiguration.store(currentProject, new HashMap<String, Boolean>());
+            }
+        }
+
+
         return new Class[]{};
     }
 }
