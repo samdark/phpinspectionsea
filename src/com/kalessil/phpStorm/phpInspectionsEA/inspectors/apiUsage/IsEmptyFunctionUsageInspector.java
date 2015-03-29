@@ -2,20 +2,13 @@ package com.kalessil.phpStorm.phpInspectionsEA.inspectors.apiUsage;
 
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.ProblemsHolder;
-import com.intellij.ide.PsiActionSupportFactory;
-import com.intellij.openapi.fileTypes.FileType;
-import com.intellij.openapi.fileTypes.FileTypeManager;
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.*;
-import com.intellij.psi.impl.search.PsiSearchHelperImpl;
-import com.intellij.psi.search.PsiSearchHelper;
-import com.intellij.psi.search.PsiSearchRequest;
-import com.intellij.psi.search.PsiSearchScopeUtil;
-import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiElementVisitor;
 import com.jetbrains.php.PhpIndex;
-import com.jetbrains.php.lang.PhpFileType;
-import com.jetbrains.php.lang.psi.elements.*;
+import com.jetbrains.php.lang.psi.elements.ArrayAccessExpression;
+import com.jetbrains.php.lang.psi.elements.Function;
+import com.jetbrains.php.lang.psi.elements.PhpEmpty;
+import com.jetbrains.php.lang.psi.elements.PhpExpression;
 import com.kalessil.phpStorm.phpInspectionsEA.openApi.BasePhpElementVisitor;
 import com.kalessil.phpStorm.phpInspectionsEA.openApi.BasePhpInspection;
 import com.kalessil.phpStorm.phpInspectionsEA.utils.ExpressionSemanticUtil;
@@ -40,28 +33,6 @@ public class IsEmptyFunctionUsageInspector extends BasePhpInspection {
     public PsiElementVisitor buildVisitor(@NotNull final ProblemsHolder holder, boolean isOnTheFly) {
         return new BasePhpElementVisitor() {
             public void visitPhpEmpty(PhpEmpty emptyExpression) {
-
-                /* find .php_cs in projects root */
-                Project currentProject = holder.getProject();
-                VirtualFile csFixerVirtualFile = currentProject.getBaseDir().findChild(".php_cs");
-                if (null != csFixerVirtualFile) {
-                    /* ensure file is recognized as PHP code */
-                    if (PhpFileType.INSTANCE != csFixerVirtualFile.getFileType()) {
-                        FileTypeManager.getInstance().associateExtension(PhpFileType.INSTANCE, "php_cs");
-                    }
-
-                    /* Get PSI file from Virtual one */
-                    PsiFile csFixerFile = PsiManager.getInstance(currentProject).findFile(csFixerVirtualFile);
-                    if (null != csFixerFile) {
-                        PsiTreeUtil.findChildrenOfType(csFixerFile, MethodReference.class);
-                        /* iterate fond references */
-                    }
-
-                    // listen for changes
-                    // PsiManager.getInstance(project).addPsiTreeChangeListener()
-                }
-
-
                 PhpExpression[] arrValues = emptyExpression.getVariables();
                 if (arrValues.length == 1) {
                     PsiElement objParameterToInspect = ExpressionSemanticUtil.getExpressionTroughParenthesis(arrValues[0]);
