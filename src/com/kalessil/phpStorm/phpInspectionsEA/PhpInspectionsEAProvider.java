@@ -92,7 +92,7 @@ public class PhpInspectionsEAProvider implements InspectionToolProvider {
             /* find .php_cs in projects root */
             VirtualFile csFixerVirtualFile = currentProject.getBaseDir().findChild(".php_cs");
             if (null != csFixerVirtualFile) {
-                /* ensure file is recognized as PHP code */
+                /* ensure file is recognized as PHP code, so PSI/AST was loaded later */
                 if (PhpFileType.INSTANCE != csFixerVirtualFile.getFileType()) {
                     FileTypeManager.getInstance().associateExtension(PhpFileType.INSTANCE, "php_cs");
                 }
