@@ -3,6 +3,7 @@ package com.kalessil.phpStorm.phpInspectionsEA.inspectors.semanticalTransformati
 import com.intellij.codeInsight.PsiEquivalenceUtil;
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.ProblemsHolder;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.tree.IElementType;
@@ -49,6 +50,7 @@ public class NotOptimalIfConditionsInspection extends BasePhpInspection {
             functionsSet.add("is_resource");
             functionsSet.add("is_numeric");
             functionsSet.add("is_scalar");
+            functionsSet.add("is_object");
         }
 
         return functionsSet;
@@ -376,12 +378,13 @@ public class NotOptimalIfConditionsInspection extends BasePhpInspection {
                 int intLoopCurrentCost;
                 boolean isPreviousCondCostCanBeBigger;
                 for (PsiElement objCond : objPartsCollection) {
-                    intLoopCurrentCost = this.getExpressionCost(objCond);
+                    intLoopCurrentCost = this.getExpressionCost(objCond, functionsSetToAllow);
 
                     /** special case when costs estimation is overridden with general practices */
                     isPreviousCondCostCanBeBigger = (
-                        (objPreviousCond instanceof FunctionReference && functionsSetToAllow.contains(((FunctionReference) objPreviousCond).getName())) ||
+                        //(objPreviousCond instanceof FunctionReference && functionsSetToAllow.contains(((FunctionReference) objPreviousCond).getName())) ||
                         objPreviousCond instanceof AssignmentExpression
+                        /* ! no isset, empty or array access here */
                     );
 
                     if (!isPreviousCondCostCanBeBigger && intLoopCurrentCost < intPreviousCost) {
@@ -402,52 +405,93 @@ public class NotOptimalIfConditionsInspection extends BasePhpInspection {
              * @param objExpression to estimate for execution cost
              * @return costs
              */
-            private int getExpressionCost(PsiElement objExpression) {
+            private int getExpressionCost(@Nullable PsiElement objExpression, @NotNull HashSet<String> functionsSetToAllow) {
                 objExpression = ExpressionSemanticUtil.getExpressionTroughParenthesis(objExpression);
 
                 if (
+                    null == objExpression ||
                     objExpression instanceof ConstantReference ||
                     objExpression instanceof StringLiteralExpression ||
                     objExpression instanceof ClassReference ||
-                    objExpression instanceof Variable ||
-                    null == objExpression
+                    objExpression instanceof Variable
                 ) {
                     return 0;
                 }
 
-                if (
-                    objExpression instanceof ClassConstantReference ||
-                    objExpression instanceof FieldReference
-                ) {
-                    return 1;
+                /* additional factor is due to hash-maps internals not considered */
+                if (objExpression instanceof ClassConstantReference || objExpression instanceof FieldReference) {
+                    return 0;
                 }
 
-                if (
-                    objExpression instanceof ArrayAccessExpression ||
-                    objExpression instanceof PhpEmpty ||
-                    objExpression instanceof PhpIsset ||
-                    objExpression instanceof PhpUnset
-                ) {
-                    return 2;
+                /* additional factor is due to hash-maps internals */
+                if (objExpression instanceof ArrayAccessExpression) {
+                    ArrayAccessExpression arrayAccess = (ArrayAccessExpression) objExpression;
+                    ArrayIndex arrayIndex             =  arrayAccess.getIndex();
+
+                    int intOwnCosts = getExpressionCost(arrayAccess.getValue(), functionsSetToAllow);
+                    if (null != arrayIndex) {
+                        intOwnCosts += getExpressionCost(arrayIndex.getValue(), functionsSetToAllow);
+                    }
+
+                    return (1 + intOwnCosts);
                 }
 
-                if (
-                    objExpression instanceof MethodReference ||
-                    objExpression instanceof FunctionReference
-                ) {
+                /* empty counts too much as empty, so it still sensitive overhead, but not add any factor */
+                if (objExpression instanceof PhpEmpty) {
+                    int intArgumentsCost = 0;
+                    for (PsiElement objParameter : ((PhpEmpty) objExpression).getVariables()) {
+                        intArgumentsCost += this.getExpressionCost(objParameter, functionsSetToAllow);
+                    }
+
+                    return intArgumentsCost;
+                }
+
+                /* isset brings no additional costs, often used for aggressive optimization */
+                if (objExpression instanceof PhpIsset) {
+                    int intArgumentsCost = 0;
+                    for (PsiElement objParameter : ((PhpIsset) objExpression).getVariables()) {
+                        intArgumentsCost += this.getExpressionCost(objParameter, functionsSetToAllow);
+                    }
+
+                    return intArgumentsCost;
+                }
+
+                /* didn't see anu usages in if, but who knows */
+                if (objExpression instanceof PhpUnset) {
+                    int intArgumentsCost = 0;
+                    for (PsiElement objParameter : ((PhpUnset) objExpression).getArguments()) {
+                        intArgumentsCost += this.getExpressionCost(objParameter, functionsSetToAllow);
+                    }
+
+                    return intArgumentsCost;
+                }
+
+                /* can be tested as FunctionReference, but keep it for further maintainability */
+                if (objExpression instanceof MethodReference || objExpression instanceof FunctionReference) {
                     int intArgumentsCost = 0;
                     for (PsiElement objParameter : ((FunctionReference) objExpression).getParameters()) {
-                        intArgumentsCost += this.getExpressionCost(objParameter);
+                        intArgumentsCost += this.getExpressionCost(objParameter, functionsSetToAllow);
                     }
 
+                    /* quite complex part - differentiate methods, functions and specially type-check functions */
                     if (objExpression instanceof MethodReference) {
-                        intArgumentsCost += this.getExpressionCost(((MethodReference) objExpression).getFirstPsiChild());
+                        intArgumentsCost += this.getExpressionCost(((MethodReference) objExpression).getFirstPsiChild(), functionsSetToAllow);
+                        intArgumentsCost += 5;
+                    } else {
+                        String strFunctionName = ((FunctionReference) objExpression).getName();
+                        /* type-check functions and rest functions */
+                        if (!StringUtil.isEmpty(strFunctionName) && functionsSetToAllow.contains(strFunctionName)) {
+                            intArgumentsCost += 0;
+                        } else {
+                            intArgumentsCost += 5;
+                        }
                     }
-                    return (5 + intArgumentsCost);
+
+                    return intArgumentsCost;
                 }
 
                 if (objExpression instanceof UnaryExpression) {
-                    return this.getExpressionCost(((UnaryExpression) objExpression).getValue());
+                    return this.getExpressionCost(((UnaryExpression) objExpression).getValue(), functionsSetToAllow);
                 }
 
 /*                if (objExpression instanceof TernaryExpression) {
@@ -462,15 +506,15 @@ public class NotOptimalIfConditionsInspection extends BasePhpInspection {
 
                 if (objExpression instanceof BinaryExpression) {
                     return
-                        this.getExpressionCost(((BinaryExpression) objExpression).getRightOperand()) +
-                        this.getExpressionCost(((BinaryExpression) objExpression).getLeftOperand());
+                        this.getExpressionCost(((BinaryExpression) objExpression).getRightOperand(), functionsSetToAllow) +
+                        this.getExpressionCost(((BinaryExpression) objExpression).getLeftOperand(), functionsSetToAllow);
                 }
 
                 if (objExpression instanceof ArrayCreationExpression) {
                     int intCosts = 0;
                     for (ArrayHashElement objEntry : ((ArrayCreationExpression) objExpression).getHashElements()) {
-                        intCosts += this.getExpressionCost(objEntry.getKey());
-                        intCosts += this.getExpressionCost(objEntry.getValue());
+                        intCosts += this.getExpressionCost(objEntry.getKey(), functionsSetToAllow);
+                        intCosts += this.getExpressionCost(objEntry.getValue(), functionsSetToAllow);
                     }
                     return intCosts;
                 }

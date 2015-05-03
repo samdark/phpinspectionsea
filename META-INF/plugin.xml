@@ -1,7 +1,7 @@
 <idea-plugin version="2">
   <id>com.kalessil.phpStorm.phpInspectionsEA</id>
   <name>Php Inspections (EA Extended)</name>
-  <version>1.1.5</version>
+  <version>1.2.1</version>
   <vendor email="kalessil@gmail.com">Vladimir Reznichenko</vendor>
 
   <depends>com.jetbrains.php</depends>
@@ -29,24 +29,16 @@ For Mac shortcuts, see <a href="https://www.jetbrains.com/phpstorm/documentation
     ]]></description>
 
   <change-notes><![CDATA[
-23 Mar 2015: bug-fixes, improvements and new inspections<br/>
+12 Apr 2015: improvements and new inspections<br/>
 <br/>
-    - A parameter can be declared as array: suppression shall be applied to callable itself;<br/>
-    - Parameter/variable is not used: false positive resolved (isset handling);<br/>
-    - Method name matches existing field name: severity lowered to weak warning;<br/>
-    - Not optimal if conditions: 'defined' added to special cases when estimating costs;<br/>
-    - Alias functions usage: hexdec/octdec warning messages updated;<br/>
+    - Slow alter in foreach: fixed following-up unset being applied to value-variable;<br/>
+    - Parameter/variable is not used: resolved false-positive with foreach;<br/>
+    - Deprecated constructor style: fixed false-positives in traits and interfaces;<br/>
 <br/>
-    - 'array_search(...)' used as 'in_array(...)': added new patterns;<br/>
-    - Alias functions usage: added all aliases for base syntax;<br/>
-    - Cascade str_replace(...) calls: check for replacements uniqueness;<br/>
-<br/>
-    - Suspicious loop: implemented;<br/>
-    - Empty classes introduction: implemented (deactivated by default);<br/>
-    - Property can be static: implemented;<br/>
-    - in_array(...) miss-use: implemented;<br/>
-    - array_unique() low performing usage: implemented;<br/>
-    - 'strstr(...)' used as 'strpos(...)': implemented;<br/>
+    - Nested ternary operator: more cases added;<br/>
+    - Statement can be decoupled from foreach: inspection added;<br/>
+    - Callable name case mismatched in a call: inspection added;<br/>
+    - Implicit magic method calls: inspection added;<br/>
 <br/>
 <hr/>
   ]]></change-notes>
@@ -133,6 +125,10 @@ For Mac shortcuts, see <a href="https://www.jetbrains.com/phpstorm/documentation
         shortName="LowPerformanceArrayUniqueUsageInspection"      displayName="Performance: array_unique() low performing usage"
         groupName="Php Inspections (EA Extended)"                 enabledByDefault="true" level="WARNING"
         implementationClass="com.kalessil.phpStorm.phpInspectionsEA.inspectors.apiUsage.LowPerformanceArrayUniqueUsageInspector"/>
+    <localInspection language="PHP" groupPath="PHP"
+        shortName="ArrayPushMissUseInspection"                    displayName="Performance: array_push(...) miss-use"
+        groupName="Php Inspections (EA Extended)"                 enabledByDefault="true" level="WARNING"
+        implementationClass="com.kalessil.phpStorm.phpInspectionsEA.inspectors.apiUsage.ArrayPushMissUseInspector"/>
 
     <localInspection language="PHP" groupPath="PHP"
         shortName="IsEmptyFunctionUsageInspection"                displayName="Type compatibility: 'empty(...)' usage"
@@ -187,6 +183,10 @@ For Mac shortcuts, see <a href="https://www.jetbrains.com/phpstorm/documentation
         shortName="ThrowRawExceptionInspection"                   displayName="Control flow: throw of general \Exception"
         groupName="Php Inspections (EA Extended)"                 enabledByDefault="true" level="WARNING"
         implementationClass="com.kalessil.phpStorm.phpInspectionsEA.inspectors.apiUsage.ThrowRawExceptionInspector"/>
+    <localInspection language="PHP" groupPath="PHP"
+        shortName="DisconnectedForeachInstructionInspection"      displayName="Control flow: statement can be decoupled from foreach"
+        groupName="Php Inspections (EA Extended)"                 enabledByDefault="true" level="WARNING"
+        implementationClass="com.kalessil.phpStorm.phpInspectionsEA.inspectors.semanticalAnalysis.DisconnectedForeachInstructionInspector"/>
 
     <localInspection language="PHP" groupPath="PHP"
         shortName="ForgottenDebugOutputInspection"                displayName="Probable bugs: forgotten debug statements"
@@ -197,13 +197,21 @@ For Mac shortcuts, see <a href="https://www.jetbrains.com/phpstorm/documentation
         groupName="Php Inspections (EA Extended)"                 enabledByDefault="true" level="WARNING"
         implementationClass="com.kalessil.phpStorm.phpInspectionsEA.inspectors.languageConstructions.AdditionOperationOnArraysInspection"/>
     <localInspection language="PHP" groupPath="PHP"
-        shortName="MissingParentConstructorCallInspection"        displayName="Probable bugs: missing parent constructor/clone call"
+        shortName="MagicMethodsValidityInspection"                displayName="Probable bugs: magic methods validity"
         groupName="Php Inspections (EA Extended)"                 enabledByDefault="true" level="WARNING"
-        implementationClass="com.kalessil.phpStorm.phpInspectionsEA.inspectors.semanticalAnalysis.MissingParentConstructorCallInspector"/>
+        implementationClass="com.kalessil.phpStorm.phpInspectionsEA.inspectors.magicMethods.MagicMethodsValidityInspector"/>
     <localInspection language="PHP" groupPath="PHP"
         shortName="SuspiciousLoopInspection"                      displayName="Probable bugs: suspicious loop"
         groupName="Php Inspections (EA Extended)"                 enabledByDefault="true" level="WARNING"
         implementationClass="com.kalessil.phpStorm.phpInspectionsEA.inspectors.semanticalAnalysis.SuspiciousLoopInspector"/>
+    <localInspection language="PHP" groupPath="PHP"
+        shortName="ReferenceMismatchInspection"                   displayName="Probable bugs: reference mismatch"
+        groupName="Php Inspections (EA Extended)"                 enabledByDefault="true" level="WARNING"
+        implementationClass="com.kalessil.phpStorm.phpInspectionsEA.inspectors.semanticalAnalysis.ReferenceMismatchInspector"/>
+    <localInspection language="PHP" groupPath="PHP"
+        shortName="ImplicitMagicMethodCallInspection"             displayName="Probable bugs: implicit magic method calls"
+        groupName="Php Inspections (EA Extended)"                 enabledByDefault="true" level="WARNING"
+        implementationClass="com.kalessil.phpStorm.phpInspectionsEA.inspectors.magicMethods.ImplicitMagicMethodCallInspector"/>
 
     <localInspection language="PHP" groupPath="PHP"
         shortName="SenselessTernaryOperatorInspection"            displayName="Confusing constructs: suspicious ternary operator"
@@ -267,6 +275,10 @@ For Mac shortcuts, see <a href="https://www.jetbrains.com/phpstorm/documentation
         shortName="PrefixedIncDecrementEquivalentInspection"       displayName="Code style: prefixed increment/decrement equivalent"
         groupName="Php Inspections (EA Extended)"                 enabledByDefault="true" level="WARNING"
         implementationClass="com.kalessil.phpStorm.phpInspectionsEA.inspectors.semanticalTransformations.PrefixedIncDecrementEquivalentInspector"/>
+    <localInspection language="PHP" groupPath="PHP"
+        shortName="CallableReferenceNameMismatchInspection"       displayName="Code style: callable name case mismatched in a call"
+        groupName="Php Inspections (EA Extended)"                 enabledByDefault="true" level="WARNING"
+        implementationClass="com.kalessil.phpStorm.phpInspectionsEA.inspectors.codeSmell.CallableReferenceNameMismatchInspector"/>
 
     <localInspection language="PHP" groupPath="PHP"
         shortName="MoreThanThreeArgumentsInspection"                displayName="Architecture: more than 3 parameters in callable"
@@ -309,6 +321,10 @@ For Mac shortcuts, see <a href="https://www.jetbrains.com/phpstorm/documentation
         shortName="AliasFunctionsUsageInspection"                   displayName="Compatibility: alias functions usage"
         groupName="Php Inspections (EA Extended)"                   enabledByDefault="true" level="WARNING"
         implementationClass="com.kalessil.phpStorm.phpInspectionsEA.inspectors.apiUsage.AliasFunctionsUsageInspector"/>
+    <localInspection language="PHP" groupPath="PHP"
+        shortName="DeprecatedConstructorStyleInspection"            displayName="Compatibility: deprecated constructor style"
+        groupName="Php Inspections (EA Extended)"                   enabledByDefault="true" level="WARNING"
+        implementationClass="com.kalessil.phpStorm.phpInspectionsEA.inspectors.semanticalAnalysis.DeprecatedConstructorStyleInspector"/>
   </extensions>
 
   <application-components>

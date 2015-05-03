@@ -19,29 +19,14 @@ import java.util.HashMap;
 
 ===TODO===:
 
-StrlenInEmptyStringCheckContextInspection: some patterns are not recognized
-    if (strlen(...))        - if
-    if (strlen(...) || ...) - binary expression
-    !strlen(...)            - unary expression
-
+NotOptimalIfConditionsInspection:
+    null/string/number comparison with variable/property - additional check in costs analysis + own messages
 
 NotOptimalIfConditionsInspection (increment to 1.2.0):
     dedicate all comparisons to separate inspection, specialized in logical bugs.
     e.g. null/instanceof combination.
 
 ===POOL===
-
-Regex semantics lookup
-    [\x]          => \x
-    [0-9]         => \d
-    [seg][seq]... => [seq]{N}
-    [seg][seq]+   => [seq]{2,}
-    [seg][seq]*   => [seq]+
-    [seg][seq]?   => [seq]{1,2}
-    [:class:]     => \x
-    /^text/       => strpos === 0
-    /text/        => strpos !== false
-
 
 $cookies[count($cookies) - 1]
     - replacement is 'end(...)', but it changes internal pointer in array, so can introduce side-effects in loops
