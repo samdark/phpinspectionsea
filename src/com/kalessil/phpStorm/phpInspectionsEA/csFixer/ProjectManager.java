@@ -1,13 +1,13 @@
 package com.kalessil.phpStorm.phpInspectionsEA.csFixer;
 
-import com.intellij.openapi.fileTypes.FileTypeManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.PsiTreeUtil;
-import com.jetbrains.php.lang.PhpFileType;
 import com.jetbrains.php.lang.psi.elements.MethodReference;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 
@@ -24,14 +24,13 @@ public class ProjectManager {
     }
 
     private ProjectManager() {
+        loadedConfigurations = new HashMap<Project, Long>();
     }
 
     private HashMap<Project, Long> loadedConfigurations = null;
 
-    public void loadProjectConfiguration(Project project) {
-        final boolean recheck = loadedConfigurations.containsKey(project);
-        final boolean load    = !recheck;
-
+    @NotNull
+    public HashMap<String, Boolean> getProjectConfiguration(@NotNull Project project) {
         /* find .php_cs in projects root */
         VirtualFile csFixerVirtualFile = project.getBaseDir().findChild(".php_cs");
         final boolean configurationExists = null != csFixerVirtualFile;
@@ -47,22 +46,18 @@ public class ProjectManager {
             ConfigurationRepository.getInstance().store(project, new HashMap<String, Boolean>());
             loadedConfigurations.put(project, (long) -1);
         }
+
+        return ConfigurationRepository.getInstance().read(project);
     }
 
-    private HashMap<String, Boolean> readConfiguration(VirtualFile configuration, Project project) {
+    @Nullable
+    private HashMap<String, Boolean> readConfiguration(@NotNull VirtualFile configuration, @NotNull Project project) {
         HashMap<String, Boolean> settings = new HashMap<String, Boolean>();
-
-        /* ensure file is recognized as PHP code, so PSI/AST was loaded later */
-        if (PhpFileType.INSTANCE != configuration.getFileType()) {
-            FileTypeManager.getInstance().associateExtension(PhpFileType.INSTANCE, "php_cs");
-        }
 
         /* Get PSI file from Virtual one */
         PsiFile csFixerFile = PsiManager.getInstance(project).findFile(configuration);
         if (null != csFixerFile) {
             PsiTreeUtil.findChildrenOfType(csFixerFile, MethodReference.class);
-
-            throw new RuntimeException("Processing " + csFixerFile.toString());
         }
 
         return settings;

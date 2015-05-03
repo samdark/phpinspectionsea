@@ -25,6 +25,13 @@ public class ConfigurationRepository {
     }
 
     /**
+     * reads out project configuration
+     */
+    public HashMap<String, Boolean> read(Project project) {
+        return projectsSettings.get(project);
+    }
+
+    /**
      * can be called both after actualization and configurations change,
      * so thread safe operations
      */

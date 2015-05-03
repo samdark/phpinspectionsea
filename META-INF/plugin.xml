@@ -328,7 +328,9 @@ For Mac shortcuts, see <a href="https://www.jetbrains.com/phpstorm/documentation
   </extensions>
 
   <application-components>
-    <!-- Add your application components here -->
+      <component>
+          <implementation-class>com.kalessil.phpStorm.phpInspectionsEA.csFixer.CsFixerFileTypeRegister</implementation-class>
+      </component>
   </application-components>
 
   <project-components>
