@@ -46,9 +46,9 @@ public class ReferenceMismatchInspector extends BasePhpInspection {
         legalizedMismatchingFunctions.add("method_exists");
     }
 
-    final protected static ConcurrentHashMap<Function, HashSet<PsiElement>> reportedIssues = new ConcurrentHashMap<Function, HashSet<PsiElement>>();
+    final private static ConcurrentHashMap<Function, HashSet<PsiElement>> reportedIssues = new ConcurrentHashMap<Function, HashSet<PsiElement>>();
 
-    protected static HashSet<PsiElement> getFunctionReportingRegistry(Function key) {
+    private static HashSet<PsiElement> getFunctionReportingRegistry(Function key) {
         boolean hasContainer = ReferenceMismatchInspector.reportedIssues.containsKey(key);
         // create an empty container
         if (!hasContainer) {

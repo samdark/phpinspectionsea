@@ -188,7 +188,7 @@ public class ExceptionsAnnotatingAndHandlingInspector extends BasePhpInspection 
 
     private static class MissingThrowAnnotationLocalFix implements LocalQuickFix {
         final private String exception;
-        private SmartPsiElementPointer<Method> method;
+        final private SmartPsiElementPointer<Method> method;
 
         MissingThrowAnnotationLocalFix(@NotNull Method method, @NotNull String exception){
             super();

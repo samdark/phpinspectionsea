@@ -70,7 +70,7 @@ public class ArrayTypeOfParameterByDefaultValueInspector extends BasePhpInspecti
     }
 
     private static class TheLocalFix implements LocalQuickFix {
-        private SmartPsiElementPointer<Parameter> param;
+        final private SmartPsiElementPointer<Parameter> param;
 
         TheLocalFix(@NotNull Parameter param) {
             super();
