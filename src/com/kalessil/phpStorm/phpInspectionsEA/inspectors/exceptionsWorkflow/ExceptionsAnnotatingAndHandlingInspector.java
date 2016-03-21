@@ -9,6 +9,8 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
+import com.intellij.psi.SmartPointerManager;
+import com.intellij.psi.SmartPsiElementPointer;
 import com.jetbrains.php.config.PhpLanguageFeature;
 import com.jetbrains.php.config.PhpLanguageLevel;
 import com.jetbrains.php.config.PhpProjectConfigurationFacade;
@@ -186,13 +188,13 @@ public class ExceptionsAnnotatingAndHandlingInspector extends BasePhpInspection 
 
     private static class MissingThrowAnnotationLocalFix implements LocalQuickFix {
         final private String exception;
-        private Method method;
+        private SmartPsiElementPointer<Method> method;
 
         MissingThrowAnnotationLocalFix(@NotNull Method method, @NotNull String exception){
             super();
 
             this.exception = exception;
-            this.method    = method;
+            this.method    = SmartPointerManager.getInstance(method.getProject()).createSmartPsiElementPointer(method);
         }
 
         @NotNull
@@ -209,49 +211,48 @@ public class ExceptionsAnnotatingAndHandlingInspector extends BasePhpInspection 
 
         @Override
         public void applyFix(@NotNull Project project, @NotNull ProblemDescriptor descriptor) {
-            final PhpDocComment phpDoc = method.getDocComment();
+            final Method method = this.method.getElement();
+            if (null != method) {
+                final PhpDocComment phpDoc = method.getDocComment();
+                final String pattern       = this.exception;
+                final String patternPlace  = "@throws " + pattern.replaceAll("\\\\", "\\\\\\\\");
 
-            final String  pattern      =  this.exception;
-            final String  patternPlace = "@throws " + pattern.replaceAll("\\\\", "\\\\\\\\");
+                /* fix if phpDoc exists and not fixed yet */
+                if (null != phpDoc && !phpDoc.getText().contains(pattern)) {
+                    final String[] comment = phpDoc.getText().split("\\n");
 
-            /* fix if phpDoc exists and not fixed yet */
-            if (null != phpDoc && !phpDoc.getText().contains(pattern)) {
-                final String[] comment = phpDoc.getText().split("\\n");
+                    boolean isInjected = false;
+                    final LinkedList<String> newCommentLines = new LinkedList<String>();
+                    for (String line : comment) {
+                        /* injecting after return tag: probe 1 */
+                        if (!isInjected && line.contains("@return")) {
+                            newCommentLines.add(line);
+                            newCommentLines.add(line.replaceAll("\\@return[^\\r\\n]*", patternPlace));
 
-                boolean isInjected = false;
-                final LinkedList<String> newCommentLines = new LinkedList<String>();
-                for (String line : comment) {
-                    /* injecting after return tag: probe 1 */
-                    if (!isInjected && line.contains("@return")) {
+                            isInjected = true;
+                            continue;
+                        }
+
+                        /* injecting at the end of PhpDoc: probe 3 */
+                        if (!isInjected && line.contains("*/")) {
+                            // no throw/return is declared
+                            newCommentLines.add(line.replaceAll("\\/", patternPlace));
+                            newCommentLines.add(line);
+
+                            isInjected = true;
+                            continue;
+                        }
+
                         newCommentLines.add(line);
-                        newCommentLines.add(line.replaceAll("\\@return[^\\r\\n]*", patternPlace));
-
-                        isInjected = true;
-                        continue;
                     }
 
-                    /* injecting at the end of PhpDoc: probe 3 */
-                    if (!isInjected && line.contains("*/")) {
-                        // no throw/return is declared
-                        newCommentLines.add(line.replaceAll("\\/", patternPlace));
-                        newCommentLines.add(line);
+                    final String newCommentText = StringUtils.join(newCommentLines, "\n");
+                    newCommentLines.clear();
 
-                        isInjected = true;
-                        continue;
-                    }
-
-                    newCommentLines.add(line);
+                    //noinspection ConstantConditions I' sure NPE will not happen as we get valid structure for input
+                    phpDoc.replace(PhpPsiElementFactory.createFromText(project, PhpDocCommentImpl.class, newCommentText));
                 }
-
-                final String newCommentText = StringUtils.join(newCommentLines, "\n");
-                newCommentLines.clear();
-
-                //noinspection ConstantConditions I' sure NPE will not happen as we get valid structure for input
-                phpDoc.replace(PhpPsiElementFactory.createFromText(project, PhpDocCommentImpl.class, newCommentText));
             }
-
-            /* release a tree node reference */
-            this.method = null;
         }
     }
 }
