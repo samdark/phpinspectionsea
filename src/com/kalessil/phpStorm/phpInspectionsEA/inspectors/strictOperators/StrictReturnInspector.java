@@ -60,7 +60,7 @@ public class StrictReturnInspector extends BasePhpInspection {
                     if (current instanceof PhpFile) {
                         break;
                     }
-                    if ((current instanceof Function) || (current instanceof Method)) {
+                    if (current instanceof Function) {
                         return current;
                     }
                     current = current.getParent();

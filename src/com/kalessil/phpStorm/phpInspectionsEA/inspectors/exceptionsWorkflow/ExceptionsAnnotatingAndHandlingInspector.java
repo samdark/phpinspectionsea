@@ -227,7 +227,7 @@ public class ExceptionsAnnotatingAndHandlingInspector extends BasePhpInspection 
                         /* injecting after return tag: probe 1 */
                         if (!isInjected && line.contains("@return")) {
                             newCommentLines.add(line);
-                            newCommentLines.add(line.replaceAll("\\@return[^\\r\\n]*", patternPlace));
+                            newCommentLines.add(line.replaceAll("@return[^\\r\\n]*", patternPlace));
 
                             isInjected = true;
                             continue;
@@ -236,7 +236,7 @@ public class ExceptionsAnnotatingAndHandlingInspector extends BasePhpInspection 
                         /* injecting at the end of PhpDoc: probe 3 */
                         if (!isInjected && line.contains("*/")) {
                             // no throw/return is declared
-                            newCommentLines.add(line.replaceAll("\\/", patternPlace));
+                            newCommentLines.add(line.replaceAll("/", patternPlace));
                             newCommentLines.add(line);
 
                             isInjected = true;

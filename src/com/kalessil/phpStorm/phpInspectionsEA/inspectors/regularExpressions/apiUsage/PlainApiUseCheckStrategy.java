@@ -32,15 +32,15 @@ public class PlainApiUseCheckStrategy {
     @SuppressWarnings("CanBeFinal")
     static private Pattern regexHasRegexAttributes = null;
     static {
-        // 	([^\\][\^\$\.\*\+\?\\\[\]\(\)\{\}\!\|\-])|([^\\]?\\[dDhHsSvVwW])
-        regexHasRegexAttributes = Pattern.compile("([^\\\\][\\^\\$\\.\\*\\+\\?\\\\\\[\\]\\(\\)\\{\\}\\!\\|\\-])|([^\\\\]?\\\\[dDhHsSvVwW])");
+        // 	([^\\][\^\$\.\*\+\?\\\[\]\(\)\{\}!\|\-])|([^\\]?\\[dDhHsSvVwW])
+        regexHasRegexAttributes = Pattern.compile("([^\\\\][\\^\\$\\.\\*\\+\\?\\\\\\[\\]\\(\\)\\{\\}!\\|\\-])|([^\\\\]?\\\\[dDhHsSvVwW])");
     }
 
     @SuppressWarnings("CanBeFinal")
     static private Pattern regexSingleCharSet = null;
     static {
-        // 	^(\[[^\.]{1}\]|[^\.]{1})$
-        regexSingleCharSet = Pattern.compile("^(\\[[^\\.]{1}\\]|[^\\.]{1})$");
+        // 	^(\[[^\.]\]|[^\.])$
+        regexSingleCharSet = Pattern.compile("^(\\[[^\\.]\\]|[^\\.])$");
     }
 
     @SuppressWarnings("CanBeFinal")
