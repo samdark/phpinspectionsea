@@ -7,8 +7,6 @@ import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.PsiElementVisitor;
-import com.intellij.psi.SmartPointerManager;
-import com.intellij.psi.SmartPsiElementPointer;
 import com.jetbrains.php.lang.psi.PhpPsiElementFactory;
 import com.jetbrains.php.lang.psi.elements.*;
 import com.kalessil.phpStorm.phpInspectionsEA.openApi.BasePhpElementVisitor;
@@ -70,11 +68,11 @@ public class ArrayTypeOfParameterByDefaultValueInspector extends BasePhpInspecti
     }
 
     private static class TheLocalFix implements LocalQuickFix {
-        final private SmartPsiElementPointer<Parameter> param;
+        private Parameter param;
 
         TheLocalFix(@NotNull Parameter param) {
             super();
-            this.param = SmartPointerManager.getInstance(param.getProject()).createSmartPsiElementPointer(param);
+            this.param = param;
         }
 
         @NotNull
@@ -91,12 +89,12 @@ public class ArrayTypeOfParameterByDefaultValueInspector extends BasePhpInspecti
 
         @Override
         public void applyFix(@NotNull Project project, @NotNull ProblemDescriptor descriptor) {
-            final Parameter param = this.param.getElement();
-            if (null != param) {
-                final String pattern = "array $%n% = array()".replace("%n%", param.getName());
-                //noinspection ConstantConditions I'm sure NPE will not happen as pattern is hardcoded
-                param.replace(PhpPsiElementFactory.createComplexParameter(project, pattern));
-            }
+            final String pattern = "array $%n% = array()".replace("%n%", this.param.getName());
+            //noinspection ConstantConditions I'm sure NPE will not happen as pattern is hardcoded
+            param.replace(PhpPsiElementFactory.createComplexParameter(project, pattern));
+
+            /* Release node reference */
+            this.param = null;
         }
     }
 }
